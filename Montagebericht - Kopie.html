@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montagebericht</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-right: 20px;
+        }
+        .form-container {
+            flex-grow: 1;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .folder-list div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            position: relative;
+        }
+        .folder-list div:hover {
+            background-color: #ddd;
+        }
+        .folder-list .delete-btn {
+            display: none;
+            position: absolute;
+            right: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .folder-list div:hover .delete-btn {
+            display: inline-block;
+        }
+        .form-list-container div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            background-color: #f9f9f9;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            position: relative;
+        }
+        .form-list-container .delete-btn {
+            display: none;
+            position: absolute;
+            right: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .form-list-container div:hover .delete-btn {
+            display: inline-block;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Seitenleiste mit Ordnern -->
+    <div class="sidebar">
+        <h3>Kunden</h3>
+        <div id="folder-container" class="folder-list"></div>
+    </div>
+
+    <!-- Formularcontainer -->
+    <div class="form-container">
+        <h2>Montagebericht</h2>
+        
+        <div>
+            <label for="formTitle">Titel:</label>
+            <input type="text" id="formTitle" placeholder="Formular Titel">
+        </div>
+        <div class="input-container">
+            <label for="montageort">Montageort:</label>
+            <input type="text" id="montageort" placeholder="Montageort">
+        </div>
+        <div>
+            <label for="ordnername">Kunde:</label>
+            <input type="text" id="ordnername" placeholder="Kunde">
+        </div>
+        <div class="input-container">
+            <label for="team">Montageteam:</label>
+            <input type="text" id="team" placeholder="Montageteam">
+        </div>
+        <div class="input-row">
+            <div class="input-container">
+                <label for="abfahrt">Abfahrt:</label>
+                <input type="datetime-local" id="abfahrt" name="abfahrt">
+            </div>
+            <div class="input-container">
+                <label for="ankunft">Ankunft:</label>
+                <input type="datetime-local" id="ankunft" name="ankunft">
+            </div>
+        </div>
+
+        <!-- Arbeitszeiten Tabelle -->
+        <section>
+            
+            <table id="arbeitszeit-table">
+                <thead>
+                    <tr>
+                        <th>Tag</th>
+                        <th>Datum</th>
+                        <th>Beginn</th>
+                        <th>Ende</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="tag">Mo</td>
+                        <td><input type="date" class="datum"></td>
+                        <td><input type="time" class="beginn"></td>
+                        <td><input type="time" class="ende"></td>
+                    </tr>
+                    <tr>
+                        <td class="tag">Di</td>
+                        <td><input type="date" class="datum"></td>
+                        <td><input type="time" class="beginn"></td>
+                        <td><input type="time" class="ende"></td>
+                    </tr>
+                    <!-- Weitere Zeilen hier -->
+                </tbody>
+            </table>
+            
+            <!-- Buttons zum Hinzufügen und Entfernen von Zeilen -->
+            <div class="buttons-container">
+                <button type="button" onclick="addRow()">Zeile hinzufügen</button>
+                <button type="button" class="remove-row" onclick="removeRow()">Letzte Zeile entfernen</button>
+            </div>
+        </section>
+
+        <div class="freitext-container">
+            <label for="freitext">Freitext:</label>
+            <textarea id="freitext" class="auto-grow"></textarea>
+        </div>
+
+       
+        <div class="buttons-container">
+            <button onclick="saveFormData()">Hinzufügen</button>
+        </div>
+        <div id="form-list-container" class="form-list-container"></div>
+    </div>
+
+    <script>
+        let currentEditingForm = null;
+    
+        // Funktion zum Hinzufügen einer neuen Zeile zur Arbeitszeit-Tabelle
+        function addRow() {
+            const table = document.getElementById('arbeitszeit-table').getElementsByTagName('tbody')[0];
+            const newRow = table.insertRow();
+            const tagCell = newRow.insertCell(0);
+            const dateCell = newRow.insertCell(1);
+            const startCell = newRow.insertCell(2);
+            const endCell = newRow.insertCell(3);
+    
+            tagCell.classList.add('tag');
+            tagCell.textContent = 'Mo';
+            dateCell.innerHTML = '<input type="date" onchange="updateTag(this)">';
+            startCell.innerHTML = '<input type="time">';
+            endCell.innerHTML = '<input type="time">';
+        }
+    
+        // Funktion zum Entfernen der letzten Zeile der Arbeitszeit-Tabelle
+        function removeRow() {
+            const table = document.getElementById('arbeitszeit-table').getElementsByTagName('tbody')[0];
+            if (table.rows.length > 1) {
+                table.deleteRow(table.rows.length - 1);
+            }
+        }
+    
+        // Funktion zur Aktualisierung des Tags (Montag, Dienstag, etc.)
+        function updateTag(inputElement) {
+            const row = inputElement.closest('tr');
+            const tagCell = row.querySelector('.tag');
+            const date = new Date(inputElement.value);
+            const day = date.getDay();
+            const daysOfWeek = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+            tagCell.textContent = daysOfWeek[day];
+        }
+        
+        
+
+    
+        // Speichern eines Formulars
+        function saveFormData() {
+    // Form-Daten abrufen
+    const abfahrt = document.getElementById('abfahrt').value;
+    const ankunft = document.getElementById('ankunft').value;
+    const formTitle = document.getElementById('formTitle').value;
+    const folderName = document.getElementById('ordnername').value;
+    const montageort = document.getElementById('montageort').value;
+    const montageteam = document.getElementById('team').value;
+    const freitext = document.getElementById('freitext').value;
+
+    // Arbeitszeiten aus der Tabelle sammeln
+    const arbeitszeiten = [];
+    const tableRows = document.querySelectorAll('#arbeitszeit-table tbody tr'); // Alle Zeilen in der Tabelle abrufen
+
+    // Jede Zeile durchgehen und die Daten auslesen
+    tableRows.forEach(row => {
+        const tagCell = row.querySelector('.tag'); // Tag (z.B. Mo, Di)
+        const datumInput = row.querySelector('.datum'); // Datum
+        const beginnInput = row.querySelector('.beginn'); // Beginn
+        const endeInput = row.querySelector('.ende'); // Ende
+
+        // Sicherstellen, dass alle Eingabefelder vorhanden sind
+        if (datumInput && beginnInput && endeInput) {
+            const tag = tagCell ? tagCell.textContent.trim() : "";
+            const datum = datumInput.value;
+            const beginn = beginnInput.value;
+            const ende = endeInput.value;
+
+            // Sicherstellen, dass alle Felder ausgefüllt sind
+            if (datum && beginn && ende) {
+                arbeitszeiten.push({ tag, datum, beginn, ende });
+            }
+        }
+    });
+
+    // Debugging: Ausgabe der gesammelten Arbeitszeiten
+    console.log('Abfahrt:', abfahrt);
+    console.log('Ankunft:', ankunft);
+    console.log('Arbeitszeiten:', arbeitszeiten);
+
+    // Wenn keine Arbeitszeiten vorhanden sind, zeigen wir eine Warnung
+    if (arbeitszeiten.length === 0) {
+        alert("Bitte füllen Sie die Arbeitszeiten aus.");
+        return;
+    }
+
+    // Formular-Daten zusammenstellen
+    const formData = {
+        formTitle,
+        Montageort: montageort,
+        Montageteam: montageteam,
+        Abfahrt: abfahrt,
+        Ankunft: ankunft,
+        Freitext: freitext,
+        Arbeitszeiten: arbeitszeiten
+    };
+
+    // Ordner im LocalStorage holen oder erstellen
+    const folders = JSON.parse(localStorage.getItem('folders')) || {};
+
+    if (!folders[folderName]) {
+        folders[folderName] = [];
+    }
+
+    // Formular zu Ordner hinzufügen oder vorhandenes Formular ersetzen
+    if (currentEditingForm) {
+        const index = folders[folderName].findIndex(f => f.formTitle === currentEditingForm.formTitle);
+        if (index !== -1) {
+            folders[folderName][index] = formData;
+        }
+    } else {
+        folders[folderName].push(formData);
+    }
+
+    // Daten im LocalStorage speichern
+    localStorage.setItem('folders', JSON.stringify(folders));
+
+    // Ordner und gespeicherte Formulare anzeigen
+    showFolders();
+    showSavedForms(folderName);
+
+    // Formular zurücksetzen
+    resetForm();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Ordner anzeigen
+        function showFolders() {
+            const folders = JSON.parse(localStorage.getItem('folders')) || {};
+            const folderContainer = document.getElementById('folder-container');
+            folderContainer.innerHTML = '';
+    
+            Object.keys(folders).forEach(folderName => {
+                const folderDiv = document.createElement('div');
+                folderDiv.textContent = folderName;
+    
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Löschen';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm('Sind Sie sicher, dass Sie diesen Ordner löschen möchten?')) {
+                        deleteFolder(folderName);
+                    }
+                };
+    
+                folderDiv.appendChild(deleteBtn);
+                folderDiv.onclick = () => showSavedForms(folderName);
+                folderContainer.appendChild(folderDiv);
+            });
+        }
+    
+        // Formulare anzeigen
+        function showSavedForms(folderName) {
+            const folders = JSON.parse(localStorage.getItem('folders')) || {};
+            const forms = folders[folderName] || [];
+            const formListContainer = document.getElementById('form-list-container');
+            formListContainer.innerHTML = '';
+    
+            forms.forEach(form => {
+                const formDiv = document.createElement('div');
+                formDiv.textContent = form.formTitle;
+    
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Löschen';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm('Sind Sie sicher, dass Sie dieses Formular löschen möchten?')) {
+                        deleteForm(folderName, form.formTitle);
+                    }
+                };
+    
+                formDiv.appendChild(deleteBtn);
+                formDiv.onclick = () => editForm(folderName, form);
+                formListContainer.appendChild(formDiv);
+            });
+        }
+    
+        // Formular bearbeiten
+       // Formular bearbeiten
+// Formular bearbeiten
+// Funktion zum Bearbeiten eines Formulars
+function editForm(folderName, form) {
+    currentEditingForm = form;
+    document.getElementById('ordnername').value = folderName;
+    document.getElementById('formTitle').value = form.formTitle || '';
+    document.getElementById('montageort').value = form.Montageort || '';
+    document.getElementById('team').value = form.Montageteam || '';
+    document.getElementById('abfahrt').value = form.Abfahrt || '';
+    document.getElementById('ankunft').value = form.Ankunft || '';
+    document.getElementById('freitext').value = form.Freitext || '';
+
+    // Arbeitszeiten aus dem Formular laden
+    const arbeitszeitTable = document.getElementById('arbeitszeit-table').getElementsByTagName('tbody')[0];
+    arbeitszeitTable.innerHTML = '';  // Tabelle leeren
+
+    form.Arbeitszeiten.forEach(arbeitszeit => {
+        const row = arbeitszeitTable.insertRow();
+        
+        // Tag
+        const tagCell = row.insertCell(0);
+        tagCell.classList.add('tag');
+        tagCell.textContent = arbeitszeit.tag;
+
+        // Datum, Beginn und Ende
+        const dateCell = row.insertCell(1);
+        const startCell = row.insertCell(2);
+        const endCell = row.insertCell(3);
+
+        dateCell.innerHTML = `<input type="date" value="${arbeitszeit.datum}">`;
+        startCell.innerHTML = `<input type="time" value="${arbeitszeit.beginn}">`;
+        endCell.innerHTML = `<input type="time" value="${arbeitszeit.ende}">`;
+    });
+}
+
+
+// Funktion zur Aktualisierung des Tags (Montag, Dienstag, etc.)
+function updateTag(inputElement) {
+    const row = inputElement.closest('tr');
+    const tagCell = row.querySelector('.tag');
+    const date = new Date(inputElement.value);
+    const day = date.getDay();
+    const daysOfWeek = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    tagCell.textContent = daysOfWeek[day];
+}
+
+
+        // Formular löschen
+        function deleteForm(folderName, formTitle) {
+            const folders = JSON.parse(localStorage.getItem('folders')) || {};
+            folders[folderName] = folders[folderName].filter(form => form.formTitle !== formTitle);
+            localStorage.setItem('folders', JSON.stringify(folders));
+            showSavedForms(folderName);
+        }
+    
+        // Ordner löschen
+        function deleteFolder(folderName) {
+            const folders = JSON.parse(localStorage.getItem('folders')) || {};
+            delete folders[folderName];
+            localStorage.setItem('folders', JSON.stringify(folders));
+            showFolders();
+            document.getElementById('form-list-container').innerHTML = '';
+        }
+    
+        // Formular zurücksetzen
+        // Funktion zum Zurücksetzen des Formulars
+function resetForm() {
+    // Setze alle Eingabefelder auf leer
+    document.getElementById('formTitle').value = '';
+    document.getElementById('ordnername').value = '';
+    document.getElementById('montageort').value = '';
+    document.getElementById('team').value = '';
+    document.getElementById('abfahrt').value = '';
+    document.getElementById('ankunft').value = '';
+    document.getElementById('freitext').value = '';
+
+    // Lösche alle Zeilen der Tabelle, bis auf die erste
+    const tableBody = document.getElementById('arbeitszeit-table').getElementsByTagName('tbody')[0];
+    const rows = tableBody.getElementsByTagName('tr');
+    while (rows.length > 1) {
+        tableBody.deleteRow(rows.length - 1);
+    }
+
+    // Setze das aktuelle Formular-Objekt zurück
+    currentEditingForm = null;
+}
+
+        // Initialisieren
+        window.onload = showFolders;
+    </script>
+    
+</body>
+</html>
